@@ -1,0 +1,3 @@
+package cryptonym
+
+func startErrLog() {}
