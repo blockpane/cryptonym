@@ -49,9 +49,9 @@ func NewAccountSearchTab(box chan fyne.Container, account *fio.Account) {
 		return widget.NewVBox(
 			fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.NewSize(RWidth(), 40)),
 				widget.NewHBox(
-					accountSelect,
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(accountSelect.MinSize()), accountSelect),
 					accountInput,
-					accountSubmit,
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(accountSubmit.MinSize()), accountSubmit),
 				),
 			),
 			layout.NewSpacer(),
@@ -66,9 +66,9 @@ func NewAccountSearchTab(box chan fyne.Container, account *fio.Account) {
 		return widget.NewVBox(
 			fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.NewSize(RWidth(), 40)),
 				widget.NewHBox(
-					accountSelect,
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(accountSelect.MinSize()), accountSelect),
 					accountInput,
-					accountSubmit,
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(accountSubmit.MinSize()), accountSubmit),
 				),
 			),
 			fyne.NewContainerWithLayout(layout.NewVBoxLayout(),
