@@ -59,14 +59,15 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 		})
 		d.Show()
 	})
+	refr := widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
+		refreshChan <- true
+	})
 	topDesc := widget.NewLabel("")
 	top := widget.NewHBox(
 		layout.NewSpacer(),
 		topDesc,
-		widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
-			refreshChan <- true
-		}),
-		sendNew,
+		fyne.NewContainerWithLayout(layout.NewFixedGridLayout(refr.MinSize()), refr),
+		fyne.NewContainerWithLayout(layout.NewFixedGridLayout(sendNew.MinSize()), sendNew),
 		layout.NewSpacer(),
 	)
 
@@ -82,6 +83,9 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 	if howMany > 100 {
 		topDesc.SetText("More than 100 pending requests.")
 	}
+	sort.Slice(pending.Requests, func(i, j int) bool {
+		return pending.Requests[i].FioRequestId < pending.Requests[j].FioRequestId
+	})
 	if howMany > 25 {
 		topDesc.SetText(topDesc.Text + fmt.Sprintf(" (only first 25 displayed.)"))
 		pending.Requests = pending.Requests[:25]
@@ -95,9 +99,6 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 		widget.NewLabelWithStyle("Summary", fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
 	)
 
-	sort.Slice(pending.Requests, func(i, j int) bool {
-		return pending.Requests[i].FioRequestId < pending.Requests[j].FioRequestId
-	})
 	for _, req := range pending.Requests {
 		func(req fio.RequestStatus) {
 			id := widget.NewLabelWithStyle(fmt.Sprintf("%d | "+req.TimeStamp.Local().Format(time.Stamp), req.FioRequestId), fyne.TextAlignCenter, fyne.TextStyle{})
@@ -159,8 +160,17 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 			requests.AddObject(widget.NewHBox(layout.NewSpacer(), widget.NewLabelWithStyle(summary, fyne.TextAlignTrailing, fyne.TextStyle{Italic: true}), rejectBtn))
 		}(req)
 	}
-	form = fyne.NewContainerWithLayout(layout.NewVBoxLayout(), top, requests)
-
+	form = widget.NewVBox(
+		top,
+		fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.NewSize(RWidth(), int(float32(PctHeight())*.68))),
+			widget.NewScrollContainer(widget.NewVBox(requests,
+				fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.Size{
+					Width:  20,
+					Height: 50,
+				}), layout.NewSpacer()),
+			)),
+		),
+	)
 	return
 }
 
