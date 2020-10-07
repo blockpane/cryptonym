@@ -315,13 +315,9 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		for {
 			select {
 			case q := <-rq:
-				mux.Lock()
 				textUpdateReq <-trimDisplayed(q)
-				mux.Unlock()
 			case s := <-rs:
-				mux.Lock()
 				textUpdateResp <-trimDisplayed(s)
-				mux.Unlock()
 			case fullResponseIndex = <-frs:
 			}
 		}
@@ -362,7 +358,6 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		if len(Results) > 256 {
 			clear()
 		}
-		mux.Lock()
 		icon := theme.ConfirmIcon()
 		if failed {
 			icon = theme.CancelIcon()
@@ -377,7 +372,6 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 			fullRespChan <- i
 		})
 		summaryGroup.Append(b)
-		mux.Unlock()
 		repaint()
 	}
 
@@ -432,7 +426,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 					return
 				}
 				output := TxResult{
-					Summary: fmt.Sprintf("%s", time.Now().Format("05.000")),
+					Summary: fmt.Sprintf("%s", time.Now().Format("15:04:05.000")),
 					Index:   i,
 				}
 				e := FormState.GeneratePayloads(account)
@@ -596,7 +590,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 						continue
 					}
 					output.Resp = []byte(err.Error())
-					output.Summary = fmt.Sprintf("%s", time.Now().Format("05.000"))
+					output.Summary = fmt.Sprintf("%s", time.Now().Format("15:04:05.000"))
 					buf := bytes.Buffer{}
 					zWriter, _ := zlib.NewWriterLevel(&buf, zlib.BestCompression)
 					if len(result) > 0 {
@@ -620,7 +614,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 				if err != nil {
 					errs.ErrChan <- err.Error()
 					output.Resp = []byte(err.Error())
-					output.Summary = fmt.Sprintf("%s", time.Now().Format("05.000"))
+					output.Summary = fmt.Sprintf("%s", time.Now().Format("15:04:05.000"))
 					if win.hideFail {
 						failedChan <- true
 						continue
