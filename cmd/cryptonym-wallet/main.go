@@ -1023,7 +1023,11 @@ func keyBoxContent() *widget.Box {
 					actor,
 					myFioAddress,
 				),
-				widget.NewHBox(balanceLabel, balanceButton, loadButton),
+				widget.NewHBox(
+					balanceLabel,
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(balanceButton.MinSize()), balanceButton),
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(loadButton.MinSize()), loadButton),
+				),
 			),
 		),
 	)
