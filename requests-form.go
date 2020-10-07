@@ -29,10 +29,10 @@ func RequestContent(reqContent chan fyne.CanvasObject, refresh chan bool) {
 	go func() {
 		for {
 			select {
-			case <- refresh:
+			case <-refresh:
 				content, err := GetPending(refresh, Account, Api)
 				if err != nil {
-					errs.ErrChan <-err.Error()
+					errs.ErrChan <- err.Error()
 					continue
 				}
 				reqContent <- content
@@ -51,7 +51,7 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 			Win,
 		)
 		go func() {
-			<- closed
+			<-closed
 			d.Hide()
 		}()
 		d.SetOnClosed(func() {
@@ -64,7 +64,7 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 		layout.NewSpacer(),
 		topDesc,
 		widget.NewButtonWithIcon("Refresh", theme.ViewRefreshIcon(), func() {
-			refreshChan <-true
+			refreshChan <- true
 		}),
 		sendNew,
 		layout.NewSpacer(),
@@ -78,7 +78,7 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 		return widget.NewVBox(top, widget.NewLabel("No pending requests.")), err
 	}
 	howMany := len(pending.Requests)
-	topDesc.SetText(fmt.Sprint(howMany)+" pending requests.")
+	topDesc.SetText(fmt.Sprint(howMany) + " pending requests.")
 	if howMany > 100 {
 		topDesc.SetText("More than 100 pending requests.")
 	}
@@ -98,9 +98,9 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 	sort.Slice(pending.Requests, func(i, j int) bool {
 		return pending.Requests[i].FioRequestId < pending.Requests[j].FioRequestId
 	})
-	for _, req := range pending.Requests{
+	for _, req := range pending.Requests {
 		func(req fio.RequestStatus) {
-			id := widget.NewLabelWithStyle(fmt.Sprintf("%d | " + req.TimeStamp.Local().Format(time.Stamp), req.FioRequestId), fyne.TextAlignCenter, fyne.TextStyle{})
+			id := widget.NewLabelWithStyle(fmt.Sprintf("%d | "+req.TimeStamp.Local().Format(time.Stamp), req.FioRequestId), fyne.TextAlignCenter, fyne.TextStyle{})
 			payer := req.PayerFioAddress
 			if len(payer) > 32 {
 				payer = payer[:29] + "..."
@@ -109,9 +109,9 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 			if len(payee) > 32 {
 				payee = payee[:29] + "..."
 			}
-			fr := widget.NewLabelWithStyle(payee, fyne.TextAlignTrailing, fyne.TextStyle{Bold:true})
+			fr := widget.NewLabelWithStyle(payee, fyne.TextAlignTrailing, fyne.TextStyle{Bold: true})
 			to := widget.NewLabelWithStyle(payer, fyne.TextAlignLeading, fyne.TextStyle{})
-			view := widget.NewButtonWithIcon("View", theme.VisibilityIcon(),func() {
+			view := widget.NewButtonWithIcon("View", theme.VisibilityIcon(), func() {
 				closed := make(chan interface{})
 				d := dialog.NewCustom(
 					fmt.Sprintf("FIO Request ID %d (%s)", req.FioRequestId, req.PayeeFioAddress),
@@ -120,9 +120,9 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 					Win,
 				)
 				go func() {
-					<- closed
+					<-closed
 					d.Hide()
-					refreshChan <-true
+					refreshChan <- true
 				}()
 				d.Show()
 			})
@@ -132,8 +132,8 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 					errs.ErrChan <- err.Error()
 					return
 				}
-				errs.ErrChan <-"rejected request id: " + strconv.FormatUint(req.FioRequestId, 10)
-				refreshChan <-true
+				errs.ErrChan <- "rejected request id: " + strconv.FormatUint(req.FioRequestId, 10)
+				refreshChan <- true
 			})
 			rejectBtn.HideShadow = true
 			requests.AddObject(widget.NewHBox(view, layout.NewSpacer()))
@@ -145,21 +145,21 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 			if err != nil {
 				view.Hide()
 				summary = "invalid content"
-				errs.ErrChan <-err.Error()
+				errs.ErrChan <- err.Error()
 			} else {
 				summary = obt.Request.ChainCode
 				if obt.Request.ChainCode != obt.Request.TokenCode {
-					summary += "/"+obt.Request.TokenCode
+					summary += "/" + obt.Request.TokenCode
 				}
 				summary += fmt.Sprintf(" (%s) %q", obt.Request.Amount, obt.Request.Memo)
 				if len(summary) > 32 {
 					summary = summary[:29] + "..."
 				}
 			}
-			requests.AddObject(widget.NewHBox(layout.NewSpacer(), widget.NewLabelWithStyle(summary, fyne.TextAlignTrailing, fyne.TextStyle{Italic:true}), rejectBtn))
+			requests.AddObject(widget.NewHBox(layout.NewSpacer(), widget.NewLabelWithStyle(summary, fyne.TextAlignTrailing, fyne.TextStyle{Italic: true}), rejectBtn))
 		}(req)
 	}
-	form = fyne.NewContainerWithLayout(layout.NewVBoxLayout(),top, requests)
+	form = fyne.NewContainerWithLayout(layout.NewVBoxLayout(), top, requests)
 
 	return
 }
@@ -201,8 +201,8 @@ func ViewRequest(id uint64, closed chan interface{}, refresh chan bool, account 
 	add("Hash", decrypted.Request.Hash)
 	add("Offline Url", decrypted.Request.OfflineUrl)
 
-	errMsg := widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Monospace:true})
-	errIcon := fyne.NewContainerWithLayout(layout.NewFixedGridLayout( fyne.NewSize(20, 20)), canvas.NewImageFromResource(theme.WarningIcon()))
+	errMsg := widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Monospace: true})
+	errIcon := fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.NewSize(20, 20)), canvas.NewImageFromResource(theme.WarningIcon()))
 	errIcon.Hide()
 	respondBtn := &widget.Button{}
 	respondBtn = widget.NewButtonWithIcon("Record Response", theme.MailReplyIcon(), func() {
@@ -214,7 +214,7 @@ func ViewRequest(id uint64, closed chan interface{}, refresh chan bool, account 
 			Win,
 		)
 		go func() {
-			<- closing
+			<-closing
 			close(closed)
 			d.Hide()
 		}()
@@ -235,7 +235,7 @@ func ViewRequest(id uint64, closed chan interface{}, refresh chan bool, account 
 		}
 		errIcon.Hide()
 		errMsg.SetText("Done. Transaction ID: " + resp.TransactionID)
-		refresh <-true
+		refresh <- true
 	})
 	buttons := widget.NewVBox(
 		widget.NewHBox(
@@ -277,7 +277,7 @@ func RespondRequest(req *fio.FundsReqTableResp, decrypted *fio.ObtRequestContent
 			l.SetText(err.Error())
 		}
 		tooLarge := ""
-		if 432 - len(content) < 0 {
+		if 432-len(content) < 0 {
 			tooLarge = "Content is too large! "
 		}
 		over := 432 - len(content)
@@ -308,7 +308,7 @@ func RespondRequest(req *fio.FundsReqTableResp, decrypted *fio.ObtRequestContent
 	add("Payer Public Key", "", false, &record.PayerPublicAddress)
 	add("Payee Public Key", decrypted.PayeePublicAddress, true, nil)
 	add("Chain Code", decrypted.ChainCode, true, nil)
-	add("Token Code", decrypted.TokenCode, true,nil)
+	add("Token Code", decrypted.TokenCode, true, nil)
 	add("Amount", decrypted.Amount, false, &record.Amount)
 	add("Status", "", false, &record.Status)
 	add("Memo", memo, false, &record.Memo)
@@ -328,10 +328,10 @@ func RespondRequest(req *fio.FundsReqTableResp, decrypted *fio.ObtRequestContent
 			errMsg.SetText("Push Action: " + err.Error())
 			return
 		}
-		errs.ErrChan <-"Success, txid: " + resp.TransactionID
+		errs.ErrChan <- "Success, txid: " + resp.TransactionID
 		errMsg.SetText("Success, txid: " + resp.TransactionID)
 		sendResponse.Disable()
-		time.Sleep(2*time.Second)
+		time.Sleep(2 * time.Second)
 		close(closed)
 	})
 
@@ -384,7 +384,7 @@ func NewRequest(account *fio.Account, api *fio.API) fyne.CanvasObject {
 	payeeNameSelect.SetSelected(payeeNameSelect.Options[0])
 	reqFormData = append(reqFormData, widget.NewFormItem("Your FIO Name", payeeNameSelect))
 
-	payerPubLabel := widget.NewLabelWithStyle(spaces, fyne.TextAlignLeading, fyne.TextStyle{Monospace:true})
+	payerPubLabel := widget.NewLabelWithStyle(spaces, fyne.TextAlignLeading, fyne.TextStyle{Monospace: true})
 	payerName := widget.NewEntry()
 	invalid := func() {
 		payerPubLabel.SetText(spaces)
@@ -409,7 +409,6 @@ func NewRequest(account *fio.Account, api *fio.API) fyne.CanvasObject {
 	reqFormData = append(reqFormData, widget.NewFormItem("Recipient's FIO Name", payerName))
 	reqFormData = append(reqFormData, widget.NewFormItem("", payerPubLabel))
 
-
 	reqFormData = append(reqFormData, widget.NewFormItem("", layout.NewSpacer()))
 
 	payeeRecvAddress := widget.NewEntry()
@@ -422,7 +421,7 @@ func NewRequest(account *fio.Account, api *fio.API) fyne.CanvasObject {
 	tokenSelect := widget.NewSelectEntry(make([]string, 0))
 	tokenSelect.OnChanged = func(s string) {
 		nfr.TokenCode = s
-		resp, found, _:= api.PubAddressLookup(fio.Address(payeeFio), chainSelect.Text, tokenSelect.Text)
+		resp, found, _ := api.PubAddressLookup(fio.Address(payeeFio), chainSelect.Text, tokenSelect.Text)
 		if !found {
 			return
 		}
@@ -459,11 +458,11 @@ func NewRequest(account *fio.Account, api *fio.API) fyne.CanvasObject {
 	add("Hash", "", false, &nfr.Hash)
 	add("Offline Url", "", false, &nfr.OfflineUrl)
 	errLabel := widget.NewLabel("")
-	sendRequest := func(){
+	sendRequest := func() {
 		defer func() {
 			go func() {
 				// prevent accidental click click click
-				time.Sleep(2*time.Second)
+				time.Sleep(2 * time.Second)
 				send.Enable()
 			}()
 		}()
@@ -477,7 +476,7 @@ func NewRequest(account *fio.Account, api *fio.API) fyne.CanvasObject {
 		resp, err := api.SignPushActions(fio.NewFundsReq(account.Actor, payerFio, payeeFio, content))
 		if err != nil {
 			errLabel.SetText(err.Error())
-			errs.ErrChan <-err.Error()
+			errs.ErrChan <- err.Error()
 			return
 		}
 		errLabel.SetText("Success, txid: " + resp.TransactionID)
@@ -517,7 +516,7 @@ func GetTokens(s string) []string {
 
 var chainTokens = map[string][]string{
 	"ABBC": {"ABBC"},
-	"ADA": {"ADA"},
+	"ADA":  {"ADA"},
 	"ALGO": {"ALGO"},
 	"ATOM": {"ATOM"},
 	"BAND": {"BAND"},
@@ -535,17 +534,17 @@ var chainTokens = map[string][]string{
 		"RUNE",
 		"SWINGBY",
 	},
-	"BSV": {"BSV"},
-	"BTC": {"BTC"},
-	"BTM": {"BTM"},
-	"CET": {"CET"},
-	"CHX": {"CHX"},
-	"CKB": {"CKB"},
+	"BSV":  {"BSV"},
+	"BTC":  {"BTC"},
+	"BTM":  {"BTM"},
+	"CET":  {"CET"},
+	"CHX":  {"CHX"},
+	"CKB":  {"CKB"},
 	"DASH": {"DASH"},
 	"DOGE": {"DOGE"},
-	"DOT": {"DOT"},
-	"EOS": {"EOS"},
-	"ETC": {"ETC"},
+	"DOT":  {"DOT"},
+	"EOS":  {"EOS"},
+	"ETC":  {"ETC"},
 	"ETH": {
 		"AERGO",
 		"AKRO",
@@ -634,26 +633,26 @@ var chainTokens = map[string][]string{
 		"ACH",
 		"IBAN",
 	},
-	"FIO": {"FIO"},
-	"FSN": {"FSN"},
-	"HPB": {"HPB"},
+	"FIO":  {"FIO"},
+	"FSN":  {"FSN"},
+	"HPB":  {"HPB"},
 	"IOST": {"IOST"},
 	"KAVA": {"KAVA"},
-	"LTC": {"LTC"},
-	"LTO": {"LTO"},
-	"MHC": {"MHC"},
+	"LTC":  {"LTC"},
+	"LTO":  {"LTO"},
+	"MHC":  {"MHC"},
 	"NEO": {
 		"GAS",
 		"NEO",
 	},
-	"OLT": {"OLT"},
+	"OLT":  {"OLT"},
 	"OMNI": {"USDT"},
-	"ONE": {"ONE"},
+	"ONE":  {"ONE"},
 	"ONT": {"ONG",
 		"ONT"},
 	"QTUM": {"QTUM"},
-	"RVN": {"RVN"},
-	"SOL": {"SOL"},
+	"RVN":  {"RVN"},
+	"SOL":  {"SOL"},
 	"TRX": {
 		"BTT",
 		"TRX",
@@ -674,6 +673,3 @@ var chainTokens = map[string][]string{
 	"ZEC": {"ZEC"},
 	"ZIL": {"ZIL"},
 }
-
-
-

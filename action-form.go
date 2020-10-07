@@ -37,7 +37,7 @@ func ResetTxResult() {
 	txWindowOpts.window.SetContent(layout.NewSpacer())
 	txWindowOpts.window.Show()
 	go func() {
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		txWindowOpts.window.Hide()
 	}()
 }

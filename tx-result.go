@@ -106,12 +106,12 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 	go func() {
 		for {
 			select {
-			case <- resizeTrigger:
+			case <-resizeTrigger:
 				if win.window == nil || !win.window.Content().Visible() {
 					continue
 				}
 				win.window.Resize(fyne.NewSize(txW, txH))
-				time.Sleep(100*time.Millisecond)
+				time.Sleep(100 * time.Millisecond)
 				win.window.Resize(win.window.Content().MinSize())
 			}
 		}
@@ -249,7 +249,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		summaryGroup = widget.NewGroupWithScroller("Transaction Result")
 		summaryGroup.Refresh()
 		textUpdateResp <- ""
-		textUpdateReq <-""
+		textUpdateReq <- ""
 		setGrid()
 	}
 
@@ -331,9 +331,9 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		for {
 			select {
 			case q := <-rq:
-				textUpdateReq <-trimDisplayed(q)
+				textUpdateReq <- trimDisplayed(q)
 			case s := <-rs:
-				textUpdateResp <-trimDisplayed(s)
+				textUpdateResp <- trimDisplayed(s)
 			case fullResponseIndex = <-frs:
 			}
 		}
@@ -677,8 +677,8 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 	setGrid()
 
 	if len(Results) > 0 && !win.hideFail && !win.hideSucc {
-		textUpdateResp <-trimDisplayed(string(Results[0].Resp))
-		textUpdateReq <-trimDisplayed(string(Results[0].Req))
+		textUpdateResp <- trimDisplayed(string(Results[0].Resp))
+		textUpdateReq <- trimDisplayed(string(Results[0].Req))
 	}
 	if !running {
 		stopButton.Disable()
@@ -694,7 +694,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		win.window.Resize(win.window.Content().MinSize())
 		go func() {
 			Win.RequestFocus()
-			time.Sleep(100*time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			win.window.Hide()
 		}()
 	})
