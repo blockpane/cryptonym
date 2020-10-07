@@ -125,38 +125,29 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		tick := time.NewTicker(time.Second)
 		update := false
 		updateBalance := false
-		mux := sync.Mutex{}
 		successCount := 0
 		failedCount := 0
 		for {
 			select {
 			case <-tick.C:
 				if updateBalance {
-					mux.Lock()
 					BalanceChan <- true
 					updateBalance = false
-					mux.Unlock()
 				}
 				if update {
-					mux.Lock()
 					successLabel.SetText(p.Sprintf("%d", successCount))
 					failedLabel.SetText(p.Sprintf("%d", failedCount))
 					successLabel.Refresh()
 					failedLabel.Refresh()
 					update = false
-					mux.Unlock()
 				}
 			case <-f:
-				mux.Lock()
 				update = true
 				failedCount = failedCount + 1
-				mux.Unlock()
 			case <-s:
-				mux.Lock()
 				update = true
 				updateBalance = true
 				successCount = successCount + 1
-				mux.Unlock()
 			}
 		}
 	}(successChan, failedChan)
@@ -191,6 +182,28 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		ShowFullRequest(Results[fullResponseIndex].FullReq, win.window)
 	})
 
+	textUpdateDone := make(chan interface{})
+	textUpdateReq := make(chan string)
+	textUpdateResp := make(chan string)
+	go func() {
+		for {
+			select {
+			case <-textUpdateDone:
+				return
+			case s := <-textUpdateReq:
+				requestText.OnChanged = func(string) {
+					requestText.SetText(s)
+				}
+				requestText.SetText(s)
+			case s := <-textUpdateResp:
+				responseText.OnChanged = func(string) {
+					responseText.SetText(s)
+				}
+				responseText.SetText(s)
+			}
+		}
+	}()
+
 	setGrid := func() {
 		grid = fyne.NewContainerWithLayout(layout.NewHBoxLayout(),
 			fyne.NewContainerWithLayout(layout.NewGridLayoutWithRows(1),
@@ -219,10 +232,8 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		Results = make([]TxResult, 0)
 		summaryGroup = widget.NewGroupWithScroller("Transaction Result")
 		summaryGroup.Refresh()
-		responseText.SetText("")
-		responseText.Refresh()
-		requestText.SetText("")
-		requestText.Refresh()
+		textUpdateResp <- ""
+		textUpdateReq <-""
 		setGrid()
 		mux.Unlock()
 	}
@@ -305,13 +316,11 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 			select {
 			case q := <-rq:
 				mux.Lock()
-				requestText.SetText(trimDisplayed(q))
-				requestText.Refresh()
+				textUpdateReq <-trimDisplayed(q)
 				mux.Unlock()
 			case s := <-rs:
 				mux.Lock()
-				responseText.SetText(trimDisplayed(s))
-				responseText.Refresh()
+				textUpdateResp <-trimDisplayed(s)
 				mux.Unlock()
 			case fullResponseIndex = <-frs:
 			}
@@ -366,7 +375,6 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 			reqChan <- string(Results[i].Req)
 			respChan <- string(Results[i].Resp)
 			fullRespChan <- i
-			repaint()
 		})
 		summaryGroup.Append(b)
 		mux.Unlock()
@@ -658,23 +666,22 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 	time.Sleep(250 * time.Millisecond)
 	setGrid()
 	if len(Results) > 0 && !win.hideFail && !win.hideSucc {
-		responseText.SetText(trimDisplayed(string(Results[0].Resp)))
-		requestText.SetText(trimDisplayed(string(Results[0].Req)))
+		textUpdateResp <-trimDisplayed(string(Results[0].Resp))
+		textUpdateReq <-trimDisplayed(string(Results[0].Req))
 	}
 	if !running {
 		stopButton.Disable()
 	}
 	repaint()
 	win.window.SetOnClosed(func() {
+		close(textUpdateDone)
 		win.gone = true
 		exit = true
 		win.window = App.NewWindow("Tx Results")
 		win.window.Resize(fyne.NewSize(txW, txH))
 		win.window.Hide()
-		requestText.SetText("")
-		requestText.Refresh()
-		responseText.SetText("")
-		responseText.Refresh()
+		textUpdateReq <-""
+		textUpdateResp <-""
 		for i := 0; i < 10; i++ {
 			if bombsAway.Disabled() {
 				exit = true
@@ -720,6 +727,9 @@ func ShowFullResponse(b []byte, win fyne.Window) {
 		}()
 	})
 	set := func(s string) {
+		FullResponseText.OnChanged = func(string) {
+			FullResponseText.SetText(s)
+		}
 		FullResponseText.SetText(s)
 		FullResponseText.Refresh()
 		FullActionRespWin.Show()
@@ -770,6 +780,9 @@ func ShowFullRequest(b []byte, win fyne.Window) {
 		}()
 	})
 	set := func(s string) {
+		fullRequestText.OnChanged = func(string) {
+			fullRequestText.SetText(s)
+		}
 		fullRequestText.SetText(s)
 		fullRequestText.Refresh()
 		fullActionRespWin.Show()
