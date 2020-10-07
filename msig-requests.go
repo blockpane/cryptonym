@@ -247,6 +247,7 @@ func requestBox(proposer string, requests []*fio.MsigApprovalsInfo, index int, p
 		// actor, fio address, has approved, is produce
 		//hasApproved := theme.CancelIcon()
 		hasApproved := theme.CheckButtonIcon()
+		asterisk := ""
 		if approvers[k] {
 			//hasApproved = theme.ConfirmIcon()
 			hasApproved = theme.CheckButtonCheckedIcon()
@@ -254,10 +255,12 @@ func requestBox(proposer string, requests []*fio.MsigApprovalsInfo, index int, p
 			for _, p := range producers.Active.Producers {
 				if p.AccountName == eos.AccountName(k) {
 					top21Count += 1
+					asterisk = "*"
 					break
 				}
 			}
 		}
+		top21Label := widget.NewLabel(asterisk)
 		var firstName string
 		n, ok, _ := api.GetFioNamesForActor(k)
 		if ok && len(n.FioAddresses) > 0 {
@@ -272,6 +275,7 @@ func requestBox(proposer string, requests []*fio.MsigApprovalsInfo, index int, p
 			fyne.NewContainerWithLayout(layout.NewGridLayout(2),
 				widget.NewHBox(
 					layout.NewSpacer(),
+					top21Label,
 					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(fyne.NewSize(32, 32)),
 						canvas.NewImageFromResource(hasApproved),
 					)),
