@@ -95,10 +95,27 @@ type txResultOpts struct {
 }
 
 func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, account *fio.Account) {
-	//var window fyne.Window
 	if win.window == nil {
 		win.window = App.NewWindow("TX Result")
 	}
+
+	// this is a workaround for fyne  sometimes showing blank black windows, resizing fixes
+	// but when it happens the window still doesn't work correctly. It will show up, but does not
+	// refresh. Beats a black window, and at least the close button works.
+	resizeTrigger := make(chan interface{})
+	go func() {
+		for {
+			select {
+			case <- resizeTrigger:
+				if win.window == nil || !win.window.Content().Visible() {
+					continue
+				}
+				win.window.Resize(fyne.NewSize(txW, txH))
+				time.Sleep(100*time.Millisecond)
+				win.window.Resize(win.window.Content().MinSize())
+			}
+		}
+	}()
 
 	workers, e := strconv.Atoi(win.threads)
 	if e != nil {
@@ -222,33 +239,32 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 				responseText,
 			),
 		)
-		win.window.Resize(fyne.NewSize(txW, txH))
+
 		win.window.SetContent(grid)
-		//win.window.CenterOnScreen()
+		win.window.Resize(win.window.Content().MinSize())
 	}
 
 	clear := func() {
-		mux.Lock()
 		Results = make([]TxResult, 0)
 		summaryGroup = widget.NewGroupWithScroller("Transaction Result")
 		summaryGroup.Refresh()
 		textUpdateResp <- ""
 		textUpdateReq <-""
 		setGrid()
-		mux.Unlock()
 	}
 
 	closeButton := widget.NewButtonWithIcon(
 		"close",
 		theme.DeleteIcon(),
 		func() {
-			if running {
-				stopRequested <- true
-			}
-			win.gone = true
-			clear()
-			//Win.RequestFocus()
-			win.window.Close()
+			go func() {
+				clear()
+				if running {
+					stopRequested <- true
+				}
+				win.gone = true
+				win.window.Close()
+			}()
 		},
 	)
 	resendButton := widget.NewButtonWithIcon("resend", theme.ViewRefreshIcon(), func() {
@@ -659,6 +675,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 	}
 	time.Sleep(250 * time.Millisecond)
 	setGrid()
+
 	if len(Results) > 0 && !win.hideFail && !win.hideSucc {
 		textUpdateResp <-trimDisplayed(string(Results[0].Resp))
 		textUpdateReq <-trimDisplayed(string(Results[0].Req))
@@ -668,27 +685,23 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 	}
 	repaint()
 	win.window.SetOnClosed(func() {
-		close(textUpdateDone)
 		win.gone = true
 		exit = true
-		win.window = App.NewWindow("Tx Results")
-		win.window.Resize(fyne.NewSize(txW, txH))
+		close(textUpdateDone)
 		win.window.Hide()
-		textUpdateReq <-""
-		textUpdateResp <-""
-		for i := 0; i < 10; i++ {
-			if bombsAway.Disabled() {
-				exit = true
-				time.Sleep(500 * time.Millisecond)
-			} else {
-				Win.RequestFocus()
-				return
-			}
-		}
+		win.window = App.NewWindow("Tx Results")
+		win.window.SetContent(fyne.NewContainer())
+		win.window.Resize(win.window.Content().MinSize())
+		go func() {
+			Win.RequestFocus()
+			time.Sleep(100*time.Millisecond)
+			win.window.Hide()
+		}()
 	})
 	if win.gone {
 		win.gone = false
 		win.window.Show()
+		resizeTrigger <- true
 	} else {
 		repaint()
 	}

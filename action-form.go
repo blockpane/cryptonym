@@ -29,7 +29,7 @@ var (
 
 func ResetTxResult() {
 	if txWindowOpts.window != nil && !txWindowOpts.gone {
-		txWindowOpts.window.Close()
+		txWindowOpts.window.Hide()
 	}
 	txWindowOpts.window = nil
 	txWindowOpts.window = App.NewWindow("Tx Results")
@@ -37,7 +37,7 @@ func ResetTxResult() {
 	txWindowOpts.window.SetContent(layout.NewSpacer())
 	txWindowOpts.window.Show()
 	go func() {
-		time.Sleep(time.Second)
+		time.Sleep(100*time.Millisecond)
 		txWindowOpts.window.Hide()
 	}()
 }
