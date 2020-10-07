@@ -35,7 +35,7 @@ var (
 	actionEndPointActive    = "/v1/chain/push_transaction"
 	apiEndPointActive       = "/v1/chain/get_info"
 	p                       = message.NewPrinter(language.English)
-	RepaintChan             = make(chan bool, 1)
+	RepaintChan             = make(chan bool)
 	PasswordVisible         bool
 	SettingsLoaded          = make(chan *FioSettings)
 	Settings                = DefaultSettings()
