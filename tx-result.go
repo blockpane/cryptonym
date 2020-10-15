@@ -256,12 +256,11 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		theme.DeleteIcon(),
 		func() {
 			go func() {
-				clear()
 				if running {
 					stopRequested <- true
 				}
 				win.gone = true
-				win.window.Close()
+				win.window.Hide()
 			}()
 		},
 	)
@@ -688,7 +687,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		exit = true
 		close(textUpdateDone)
 	})
-	if win.gone {
+	if win.gone && win != nil {
 		win.gone = false
 		win.window.Show()
 		resizeTrigger <- true
