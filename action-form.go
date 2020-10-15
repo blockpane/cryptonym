@@ -22,14 +22,13 @@ var (
 	FormState    = NewAbi(0)
 	bombsAway    = &widget.Button{}
 	txWindowOpts = &txResultOpts{
-		window: App.NewWindow("Tx Results"),
 		gone:   true,
 	}
 )
 
 func ResetTxResult() {
-	if txWindowOpts.window != nil && !txWindowOpts.gone {
-		txWindowOpts.window.Hide()
+	if txWindowOpts.window != nil {
+		txWindowOpts.window.Close()
 	}
 	txWindowOpts.window = nil
 	txWindowOpts.window = App.NewWindow("Tx Results")
@@ -246,8 +245,6 @@ func GetAbiForm(action string, account *fio.Account, api *fio.API, opts *fio.TxO
 	})
 	apiEndpoint.SetSelected("/v1/chain/push_transaction")
 	apiEndpoint.Refresh()
-
-	txWindowOpts.window.Resize(fyne.NewSize(txW, txH))
 
 	// multisig options:
 	randProposal := func() string {

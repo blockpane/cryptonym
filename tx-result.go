@@ -95,9 +95,7 @@ type txResultOpts struct {
 }
 
 func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, account *fio.Account) {
-	if win.window == nil {
-		win.window = App.NewWindow("TX Result")
-	}
+	ResetTxResult()
 
 	// this is a workaround for fyne  sometimes showing blank black windows, resizing fixes
 	// but when it happens the window still doesn't work correctly. It will show up, but does not
@@ -685,18 +683,10 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 	}
 	repaint()
 	win.window.SetOnClosed(func() {
+		Win.RequestFocus()
 		win.gone = true
 		exit = true
 		close(textUpdateDone)
-		win.window.Hide()
-		win.window = App.NewWindow("Tx Results")
-		win.window.SetContent(fyne.NewContainer())
-		win.window.Resize(win.window.Content().MinSize())
-		go func() {
-			Win.RequestFocus()
-			time.Sleep(100 * time.Millisecond)
-			win.window.Hide()
-		}()
 	})
 	if win.gone {
 		win.gone = false

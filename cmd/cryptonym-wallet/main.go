@@ -445,7 +445,6 @@ func reconnect(account *fio.Account) (result bool) {
 		time.Sleep(2 * time.Second)
 		explorer.BalanceChan <- true
 	}()
-	explorer.ResetTxResult()
 	result = true
 	return
 }
