@@ -18,6 +18,7 @@ import (
 	"log"
 	"math"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -95,10 +96,25 @@ type txResultOpts struct {
 }
 
 func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, account *fio.Account) {
-	//var window fyne.Window
-	if win.window == nil {
-		win.window = App.NewWindow("TX Result")
-	}
+	ResetTxResult()
+
+	// this is a workaround for fyne  sometimes showing blank black windows, resizing fixes
+	// but when it happens the window still doesn't work correctly. It will show up, but does not
+	// refresh. Beats a black window, and at least the close button works.
+	resizeTrigger := make(chan interface{})
+	go func() {
+		for {
+			select {
+			case <-resizeTrigger:
+				if win.window == nil || !win.window.Content().Visible() {
+					continue
+				}
+				win.window.Resize(fyne.NewSize(txW, txH))
+				time.Sleep(100 * time.Millisecond)
+				win.window.Resize(win.window.Content().MinSize())
+			}
+		}
+	}()
 
 	workers, e := strconv.Atoi(win.threads)
 	if e != nil {
@@ -125,38 +141,29 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		tick := time.NewTicker(time.Second)
 		update := false
 		updateBalance := false
-		mux := sync.Mutex{}
 		successCount := 0
 		failedCount := 0
 		for {
 			select {
 			case <-tick.C:
 				if updateBalance {
-					mux.Lock()
 					BalanceChan <- true
 					updateBalance = false
-					mux.Unlock()
 				}
 				if update {
-					mux.Lock()
 					successLabel.SetText(p.Sprintf("%d", successCount))
 					failedLabel.SetText(p.Sprintf("%d", failedCount))
 					successLabel.Refresh()
 					failedLabel.Refresh()
 					update = false
-					mux.Unlock()
 				}
 			case <-f:
-				mux.Lock()
 				update = true
 				failedCount = failedCount + 1
-				mux.Unlock()
 			case <-s:
-				mux.Lock()
 				update = true
 				updateBalance = true
 				successCount = successCount + 1
-				mux.Unlock()
 			}
 		}
 	}(successChan, failedChan)
@@ -191,6 +198,28 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		ShowFullRequest(Results[fullResponseIndex].FullReq, win.window)
 	})
 
+	textUpdateDone := make(chan interface{})
+	textUpdateReq := make(chan string)
+	textUpdateResp := make(chan string)
+	go func() {
+		for {
+			select {
+			case <-textUpdateDone:
+				return
+			case s := <-textUpdateReq:
+				requestText.OnChanged = func(string) {
+					requestText.SetText(s)
+				}
+				requestText.SetText(s)
+			case s := <-textUpdateResp:
+				responseText.OnChanged = func(string) {
+					responseText.SetText(s)
+				}
+				responseText.SetText(s)
+			}
+		}
+	}()
+
 	setGrid := func() {
 		grid = fyne.NewContainerWithLayout(layout.NewHBoxLayout(),
 			fyne.NewContainerWithLayout(layout.NewGridLayoutWithRows(1),
@@ -209,35 +238,35 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 				responseText,
 			),
 		)
-		win.window.Resize(fyne.NewSize(txW, txH))
+
 		win.window.SetContent(grid)
-		//win.window.CenterOnScreen()
+		win.window.Resize(win.window.Content().MinSize())
 	}
 
 	clear := func() {
-		mux.Lock()
 		Results = make([]TxResult, 0)
 		summaryGroup = widget.NewGroupWithScroller("Transaction Result")
 		summaryGroup.Refresh()
-		responseText.SetText("")
-		responseText.Refresh()
-		requestText.SetText("")
-		requestText.Refresh()
+		textUpdateResp <- ""
+		textUpdateReq <- ""
 		setGrid()
-		mux.Unlock()
 	}
 
 	closeButton := widget.NewButtonWithIcon(
 		"close",
 		theme.DeleteIcon(),
 		func() {
-			if running {
-				stopRequested <- true
-			}
-			win.gone = true
-			clear()
-			//Win.RequestFocus()
-			win.window.Close()
+			go func() {
+				if running {
+					stopRequested <- true
+				}
+				win.gone = true
+				win.window.Hide()
+				// this causes a segfault on linux, but on darwin if not closed it leaves a window hanging around.
+				if runtime.GOOS == "darwin" {
+					win.window.Close()
+				}
+			}()
 		},
 	)
 	resendButton := widget.NewButtonWithIcon("resend", theme.ViewRefreshIcon(), func() {
@@ -304,15 +333,9 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		for {
 			select {
 			case q := <-rq:
-				mux.Lock()
-				requestText.SetText(trimDisplayed(q))
-				requestText.Refresh()
-				mux.Unlock()
+				textUpdateReq <- trimDisplayed(q)
 			case s := <-rs:
-				mux.Lock()
-				responseText.SetText(trimDisplayed(s))
-				responseText.Refresh()
-				mux.Unlock()
+				textUpdateResp <- trimDisplayed(s)
 			case fullResponseIndex = <-frs:
 			}
 		}
@@ -353,7 +376,6 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		if len(Results) > 256 {
 			clear()
 		}
-		mux.Lock()
 		icon := theme.ConfirmIcon()
 		if failed {
 			icon = theme.CancelIcon()
@@ -366,10 +388,8 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 			reqChan <- string(Results[i].Req)
 			respChan <- string(Results[i].Resp)
 			fullRespChan <- i
-			repaint()
 		})
 		summaryGroup.Append(b)
-		mux.Unlock()
 		repaint()
 	}
 
@@ -424,7 +444,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 					return
 				}
 				output := TxResult{
-					Summary: fmt.Sprintf("%s", time.Now().Format("05.000")),
+					Summary: fmt.Sprintf("%s", time.Now().Format("15:04:05.000")),
 					Index:   i,
 				}
 				e := FormState.GeneratePayloads(account)
@@ -588,7 +608,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 						continue
 					}
 					output.Resp = []byte(err.Error())
-					output.Summary = fmt.Sprintf("%s", time.Now().Format("05.000"))
+					output.Summary = fmt.Sprintf("%s", time.Now().Format("15:04:05.000"))
 					buf := bytes.Buffer{}
 					zWriter, _ := zlib.NewWriterLevel(&buf, zlib.BestCompression)
 					if len(result) > 0 {
@@ -612,7 +632,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 				if err != nil {
 					errs.ErrChan <- err.Error()
 					output.Resp = []byte(err.Error())
-					output.Summary = fmt.Sprintf("%s", time.Now().Format("05.000"))
+					output.Summary = fmt.Sprintf("%s", time.Now().Format("15:04:05.000"))
 					if win.hideFail {
 						failedChan <- true
 						continue
@@ -657,37 +677,25 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 	}
 	time.Sleep(250 * time.Millisecond)
 	setGrid()
+
 	if len(Results) > 0 && !win.hideFail && !win.hideSucc {
-		responseText.SetText(trimDisplayed(string(Results[0].Resp)))
-		requestText.SetText(trimDisplayed(string(Results[0].Req)))
+		textUpdateResp <- trimDisplayed(string(Results[0].Resp))
+		textUpdateReq <- trimDisplayed(string(Results[0].Req))
 	}
 	if !running {
 		stopButton.Disable()
 	}
 	repaint()
 	win.window.SetOnClosed(func() {
+		Win.RequestFocus()
 		win.gone = true
 		exit = true
-		win.window = App.NewWindow("Tx Results")
-		win.window.Resize(fyne.NewSize(txW, txH))
-		win.window.Hide()
-		requestText.SetText("")
-		requestText.Refresh()
-		responseText.SetText("")
-		responseText.Refresh()
-		for i := 0; i < 10; i++ {
-			if bombsAway.Disabled() {
-				exit = true
-				time.Sleep(500 * time.Millisecond)
-			} else {
-				Win.RequestFocus()
-				return
-			}
-		}
+		close(textUpdateDone)
 	})
-	if win.gone {
+	if win.gone && win != nil {
 		win.gone = false
 		win.window.Show()
+		resizeTrigger <- true
 	} else {
 		repaint()
 	}
@@ -720,6 +728,9 @@ func ShowFullResponse(b []byte, win fyne.Window) {
 		}()
 	})
 	set := func(s string) {
+		FullResponseText.OnChanged = func(string) {
+			FullResponseText.SetText(s)
+		}
 		FullResponseText.SetText(s)
 		FullResponseText.Refresh()
 		FullActionRespWin.Show()
@@ -770,6 +781,9 @@ func ShowFullRequest(b []byte, win fyne.Window) {
 		}()
 	})
 	set := func(s string) {
+		fullRequestText.OnChanged = func(string) {
+			fullRequestText.SetText(s)
+		}
 		fullRequestText.SetText(s)
 		fullRequestText.Refresh()
 		fullActionRespWin.Show()

@@ -64,7 +64,7 @@ var (
 	uriContent    = uriInput(true)
 	uriContainer  = &fyne.Container{}
 	ready         = false
-	connectedChan = make(chan bool, 1)
+	connectedChan = make(chan bool)
 	p             = message.NewPrinter(language.English)
 	keyBox        = &widget.Box{}
 	serverInfoCh  = make(chan explorer.ServerInfo)
@@ -382,7 +382,7 @@ func refreshInfo(deadline time.Duration) (string, bool) {
 	d := time.Now().Add(deadline)
 	ctx, cancel := context.WithDeadline(context.Background(), d)
 	defer cancel()
-	resultChan := make(chan string, 1)
+	resultChan := make(chan string)
 	go func() {
 		clientMux.Lock()
 		defer clientMux.Unlock()
@@ -445,7 +445,6 @@ func reconnect(account *fio.Account) (result bool) {
 		time.Sleep(2 * time.Second)
 		explorer.BalanceChan <- true
 	}()
-	explorer.ResetTxResult()
 	result = true
 	return
 }
@@ -1023,7 +1022,11 @@ func keyBoxContent() *widget.Box {
 					actor,
 					myFioAddress,
 				),
-				widget.NewHBox(balanceLabel, balanceButton, loadButton),
+				widget.NewHBox(
+					balanceLabel,
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(balanceButton.MinSize()), balanceButton),
+					fyne.NewContainerWithLayout(layout.NewFixedGridLayout(loadButton.MinSize()), loadButton),
+				),
 			),
 		),
 	)

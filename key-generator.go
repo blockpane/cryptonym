@@ -35,7 +35,7 @@ var imageSize = func() (size int) {
 	return
 }()
 
-var RefreshQr = make(chan bool, 1)
+var RefreshQr = make(chan bool)
 
 func KeyGenTab() *widget.Box {
 
@@ -46,7 +46,7 @@ func KeyGenTab() *widget.Box {
 	var showingPriv bool
 	var err error
 
-	vanityQuit := make(chan bool, 1)
+	vanityQuit := make(chan bool)
 	vanityOpt := &vanityOptions{}
 	vanityOpt.threads = runtime.NumCPU()
 	vanitySearch := widget.NewSelect([]string{"Actor", "Pubkey", "Either"}, func(s string) {
