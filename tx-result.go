@@ -18,6 +18,7 @@ import (
 	"log"
 	"math"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -256,12 +257,15 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		theme.DeleteIcon(),
 		func() {
 			go func() {
-				clear()
 				if running {
 					stopRequested <- true
 				}
 				win.gone = true
-				win.window.Close()
+				win.window.Hide()
+				// this causes a segfault on linux, but on darwin if not closed it leaves a window hanging around.
+				if runtime.GOOS == "darwin" {
+					win.window.Close()
+				}
 			}()
 		},
 	)
@@ -688,7 +692,7 @@ func TxResultsWindow(win *txResultOpts, api *fio.API, opts *fio.TxOptions, accou
 		exit = true
 		close(textUpdateDone)
 	})
-	if win.gone {
+	if win.gone && win != nil {
 		win.gone = false
 		win.window.Show()
 		resizeTrigger <- true
