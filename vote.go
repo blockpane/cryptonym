@@ -112,10 +112,22 @@ var bpInfoCache = make(map[string]*bpInfo)
 
 func getBpInfo(actor string, api *fio.API) ([]bpInfo, error) {
 	bpi := make([]bpInfo, 0)
-	prods, err := api.GetFioProducers()
+	p, err := api.GetFioProducers()
 	if err != nil {
 		return bpi, err
 	}
+
+	prods := &fio.Producers{
+		Producers: make([]fio.Producer, 0),
+	}
+	// little hack for testnet to cleanup crap from various test scripts:
+	for i := range p.Producers {
+		if strings.Contains(p.Producers[i].Url, "dapix.io") {
+			continue
+		}
+		prods.Producers = append(prods.Producers, p.Producers[i])
+	}
+
 	curVotes := strings.Split(GetCurrentVotes(actor, api), ",")
 	for i := range curVotes {
 		curVotes[i] = strings.TrimSpace(curVotes[i])
