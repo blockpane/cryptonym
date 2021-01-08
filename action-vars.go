@@ -251,6 +251,8 @@ func defaultValues(contract string, action string, fieldName string, fieldType s
 			fee = fio.GetMaxFee("register_fio_domain")
 		}
 		returnValue = p.Sprintf("%.9f", fee)
+	case fieldName == "can_vote":
+		returnValue = "1"
 	case fieldName == "is_public":
 		returnValue = "1"
 	case fieldType == "tokenpubaddr[]":
@@ -338,6 +340,21 @@ func defaultValues(contract string, action string, fieldName string, fieldType s
     "actor":"%s",
     "permission":"active"
 }`, account.Actor)
+	case fieldName == "periods":
+		returnValue = `[
+    {
+        "duration": 86400,
+        "percent": 1.2
+    },
+    {
+        "duration": 172800,
+        "percent": 90.8
+    },
+    {
+        "duration": 259200,
+        "percent": 8.0
+    }
+]`
 	case fieldType == "permission_level[]":
 		returnValue = fmt.Sprintf(`[{
         "actor":"%s",

@@ -176,6 +176,9 @@ func GetAbiForm(action string, account *fio.Account, api *fio.API, opts *fio.TxO
 				in.SetText("10,000.00")
 			}
 		}
+		if field.Name == "periods" {
+			variation.SetSelected("json -> struct")
+		}
 	}
 
 	hideFailed := widget.NewCheck("Hide Failed", func(b bool) {})
