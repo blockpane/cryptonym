@@ -1,5 +1,6 @@
 .idea
 package
 local*
+fyne-cross
 
 .DS_Store

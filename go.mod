@@ -9,7 +9,7 @@ require (
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v1.0.1
 	github.com/ethereum/go-ethereum v1.9.15
-	github.com/fioprotocol/fio-go v1.0.3-0.20210108173809-98ac48363ba8
+	github.com/fioprotocol/fio-go v1.0.3
 	github.com/skip2/go-qrcode v0.0.0-20191027152451-9434209cb086
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/text v0.3.3

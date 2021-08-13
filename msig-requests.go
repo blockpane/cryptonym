@@ -1,6 +1,9 @@
 package cryptonym
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"fyne.io/fyne"
@@ -15,8 +18,11 @@ import (
 	"github.com/fioprotocol/fio-go/eos"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
+	"net"
+	"net/http"
 	"sort"
 	"strings"
+	"time"
 )
 
 func MsigRequestsContent(api *fio.API, opts *fio.TxOptions, account *fio.Account) *widget.TabItem {
@@ -462,6 +468,11 @@ func resultPopup(result string, window fyne.Window) {
 	)
 }
 
+type msigProposalRow struct {
+	ProposalName      eos.Name `json:"proposal_name"`
+	PackedTransaction string    `json:"packed_transaction"`
+}
+
 func ProposalRows(offset int, limit int, api *fio.API, opts *fio.TxOptions, account *fio.Account) *widget.Box {
 	_, proposals, err := api.GetProposals(offset, limit)
 	if err != nil {
@@ -538,10 +549,103 @@ func ProposalRows(offset int, limit int, api *fio.API, opts *fio.TxOptions, acco
 		})
 		for index, prop := range approvalsInfo {
 			hasNeeds := fmt.Sprintf("%d of %d approvals", len(prop.ProvidedApprovals), len(prop.ProvidedApprovals)+len(prop.RequestedApprovals))
-			gpt, err := api.GetProposalTransaction(eos.AccountName(proposer), prop.ProposalName)
+			//gpt, err := api.GetProposalTransaction(eos.AccountName(proposer), prop.ProposalName)
+			j, err := json.Marshal(&fio.GetTableRowsOrderRequest{
+				Code:       "eosio.msig",
+				Scope:      proposer,
+				Table:      "proposal",
+				LowerBound: string(prop.ProposalName),
+				UpperBound: string(prop.ProposalName),
+				Limit:      1,
+				KeyType:    "name",
+				Index:      "1",
+				JSON:       true,
+				Reverse:    false,
+			})
 			if err != nil {
 				errs.ErrChan <- err.Error()
 				continue
+			}
+			client := &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					DialContext: (&net.Dialer{
+						Timeout:   30 * time.Second,
+						KeepAlive: 30 * time.Second,
+						DualStack: true,
+					}).DialContext,
+					MaxIdleConns:          100,
+					IdleConnTimeout:       90 * time.Second,
+					TLSHandshakeTimeout:   10 * time.Second,
+					ExpectContinueTimeout: 1 * time.Second,
+					DisableKeepAlives:     true, // default behavior, because of `nodeos`'s lack of support for Keep alives.
+					ReadBufferSize: 1024 * 1024,
+				},
+			}
+			resp, err := client.Post(api.BaseURL+"/v1/chain/get_table_rows", "application/json", bytes.NewReader(j))
+			if err != nil {
+				errs.ErrChan <- err.Error()
+				continue
+			}
+			//body, err := ioutil.ReadAll(resp.Body)
+			//buf := bytes.NewBuffer(nil)
+			copyBuf := make([]byte, 16384)
+			//resp.Body.Read()
+			//_, err = io.CopyBuffer(buf, resp.Body, copyBuf)
+			//if err != nil {
+			//	errs.ErrChan <- err.Error()
+			//	continue
+			//}
+			body := make([]byte, 0)
+			var e error
+			var n int
+			for {
+				n, e = resp.Body.Read(copyBuf)
+				if e != nil {
+					if n > 0 {
+						body = append(body, copyBuf[:n]...)
+					}
+					errs.ErrChan <- e.Error()
+					break
+				}
+				body = append(body, copyBuf[:n]...)
+			}
+			resp.Body.Close()
+			tableRows := &eos.GetTableRowsResp{}
+			err = json.Unmarshal(body, tableRows)
+			if err != nil {
+				errs.ErrChan <- err.Error()
+				continue
+			}
+			gpts := make([]*msigProposalRow, 0)
+			err = json.Unmarshal(tableRows.Rows, &gpts)
+			if err != nil {
+				errs.ErrChan <- err.Error()
+				continue
+			}
+			if len(gpts) == 0 {
+				errs.ErrChan <- "got empty result from query"
+				continue
+			}
+			txBytes, err := hex.DecodeString(gpts[0].PackedTransaction)
+			decoder := eos.NewDecoder(txBytes)
+			tx := &eos.Transaction{}
+			err = decoder.Decode(tx)
+			if err != nil {
+				errs.ErrChan <- err.Error()
+				continue
+			}
+			h := sha256.New()
+			_, err = h.Write(txBytes)
+			if err != nil {
+				errs.ErrChan <- err.Error()
+				continue
+			}
+			sum := h.Sum(nil)
+			gpt := &fio.MsigProposal{
+				ProposalName: prop.ProposalName,
+				PackedTransaction: tx,
+				ProposalHash: sum,
 			}
 			for _, action := range gpt.PackedTransaction.Actions {
 				a, err := api.GetABI(action.Account)
