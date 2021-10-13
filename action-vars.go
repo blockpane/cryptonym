@@ -250,7 +250,7 @@ func defaultValues(contract string, action string, fieldName string, fieldType s
 			// as expensive as it gets ... pretty safe to return
 			fee = fio.GetMaxFee("register_fio_domain")
 		}
-		returnValue = p.Sprintf("%.9f", fee)
+		returnValue = p.Sprintf("%.10f", fee)
 	case fieldName == "can_vote":
 		returnValue = "1"
 	case fieldName == "is_public":

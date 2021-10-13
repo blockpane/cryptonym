@@ -282,7 +282,7 @@ func VoteContent(content chan fyne.CanvasObject, refresh chan bool) {
 				)
 				if err != nil {
 					result = err.Error()
-					errs.ErrChan <- err.Error()
+					errs.ErrChan <- errs.Detailed(err)
 				} else {
 					j, err := json.MarshalIndent(resp, "", "  ")
 					if err != nil {

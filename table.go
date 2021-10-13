@@ -97,7 +97,7 @@ func GetAccountSummary(api *fio.API) (*FioActions, error) {
 	for _, name := range result {
 		bi, err := api.GetABI(eos.AccountName(name.Owner))
 		if err != nil {
-			errs.ErrChan <- "problem while loading abi: " + err.Error()
+			errs.ErrChan <- "problem while loading abi: " + errs.Detailed(err)
 			continue
 		}
 		actionList := make(map[string]bool, 0)

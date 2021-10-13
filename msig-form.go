@@ -296,7 +296,7 @@ func fundRandMsig(msig *fio.Account, funder *fio.Account, count int, api *fio.AP
 		), opts.ChainID, fio.CompressionNone,
 	)
 	if err != nil {
-		errs.ErrChan <- err.Error()
+		errs.ErrChan <- errs.Detailed(err)
 		errs.ErrChan <- "Could not fund new msig account:"
 		return false, err
 	}
@@ -364,7 +364,7 @@ func updateAuthResult(account *fio.Account, signers []signer, threshold int) (ok
 	}
 	a, o, e := fio.NewConnection(account.KeyBag, Uri)
 	if e != nil {
-		errs.ErrChan <- e.Error()
+		errs.ErrChan <- errs.Detailed(err)
 		errs.ErrChan <- "Could not update auth, new connection failed:"
 		return false, nil, errors.New("update auth Failed, could not connect to server")
 	}
@@ -409,7 +409,7 @@ func updateAuthResult(account *fio.Account, signers []signer, threshold int) (ok
 	}
 	out, e := a.PushTransactionRaw(tx)
 	if e != nil {
-		errs.ErrChan <- e.Error()
+		errs.ErrChan <- errs.Detailed(e)
 		errs.ErrChan <- account.KeyBag.Keys[0].String()
 		errs.ErrChan <- "use this private key to recover funds."
 		errs.ErrChan <- "Could not update auth for owner, push transaction failed:"

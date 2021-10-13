@@ -1,7 +1,9 @@
 package errs
 
 import (
+	"fmt"
 	"fyne.io/fyne/widget"
+	"github.com/fioprotocol/fio-go/eos"
 	"log"
 	"strings"
 	"time"
@@ -42,4 +44,13 @@ func init() {
 			}
 		}
 	}(ErrChan, DisconnectChan)
+}
+
+func Detailed(e error) string {
+	switch e.(type) {
+	case eos.APIError:
+		return fmt.Sprintf("%s - %+v", e.Error(), e.(eos.APIError).ErrorStruct)
+	default:
+		return e.Error()
+	}
 }

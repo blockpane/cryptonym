@@ -92,12 +92,12 @@ func NewAccountSearchTab(box chan fyne.Container, account *fio.Account) {
 				)
 				info, err := AccountSearch(accountSelect.Selected, accountInput.Text)
 				if err != nil {
-					errs.ErrChan <- err.Error()
+					errs.ErrChan <- errs.Detailed(err)
 					return
 				}
 				ao, err := info.report()
 				if err != nil {
-					errs.ErrChan <- err.Error()
+					errs.ErrChan <- errs.Detailed(err)
 					return
 				}
 				deRef := *ao

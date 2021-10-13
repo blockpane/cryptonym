@@ -32,7 +32,7 @@ func RequestContent(reqContent chan fyne.CanvasObject, refresh chan bool) {
 			case <-refresh:
 				content, err := GetPending(refresh, Account, Api)
 				if err != nil {
-					errs.ErrChan <- err.Error()
+					errs.ErrChan <- errs.Detailed(err)
 					continue
 				}
 				reqContent <- content
@@ -130,7 +130,7 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 			rejectBtn := widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
 				_, err := api.SignPushActions(fio.NewRejectFndReq(account.Actor, strconv.FormatUint(req.FioRequestId, 10)))
 				if err != nil {
-					errs.ErrChan <- err.Error()
+					errs.ErrChan <- errs.Detailed(err)
 					return
 				}
 				errs.ErrChan <- "rejected request id: " + strconv.FormatUint(req.FioRequestId, 10)
@@ -146,7 +146,7 @@ func GetPending(refreshChan chan bool, account *fio.Account, api *fio.API) (form
 			if err != nil {
 				view.Hide()
 				summary = "invalid content"
-				errs.ErrChan <- err.Error()
+				errs.ErrChan <- errs.Detailed(err)
 			} else {
 				summary = obt.Request.ChainCode
 				if obt.Request.ChainCode != obt.Request.TokenCode {
@@ -486,7 +486,7 @@ func NewRequest(account *fio.Account, api *fio.API) fyne.CanvasObject {
 		resp, err := api.SignPushActions(fio.NewFundsReq(account.Actor, payerFio, payeeFio, content))
 		if err != nil {
 			errLabel.SetText(err.Error())
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <- errs.Detailed(err)
 			return
 		}
 		errLabel.SetText("Success, txid: " + resp.TransactionID)

@@ -32,7 +32,7 @@ func GetAbiViewer(w int, h int, api *fio.API) (tab *widget.Box, ok bool) {
 		errs.ErrChan <- "getting abi for " + s
 		abiOut, err := api.GetABI(eos.AccountName(s))
 		if err != nil {
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <- errs.Detailed(err)
 			return
 		}
 

@@ -23,7 +23,7 @@ func NewApiRequestTab(container chan fyne.Container) {
 	apiList := SupportedApis{Apis: []string{"/v1/chain/get_info"}}
 	err := apiList.Update(Uri, false)
 	if err != nil {
-		errs.ErrChan <- "Error updating list of available APIs: " + err.Error()
+		errs.ErrChan <- "Error updating list of available APIs: " + errs.Detailed(err)
 	}
 	inputEntry := widget.NewMultiLineEntry()
 	outputEntry := widget.NewMultiLineEntry()

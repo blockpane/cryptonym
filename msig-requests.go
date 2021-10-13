@@ -45,7 +45,7 @@ func requestBox(proposer string, requests []*fio.MsigApprovalsInfo, index int, p
 	refresh := func() {
 		_, ai, err := api.GetApprovals(fio.Name(proposer), 10)
 		if err != nil {
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <- errs.Detailed(err)
 			return
 		}
 		requests = ai
@@ -59,13 +59,13 @@ func requestBox(proposer string, requests []*fio.MsigApprovalsInfo, index int, p
 			opts.ChainID, fio.CompressionNone,
 		)
 		if err != nil {
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <- errs.Detailed(err)
 			resultPopup(err.Error(), proposalWindow)
 			return
 		}
 		res, err := api.PushTransactionRaw(tx)
 		if err != nil {
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <-errs.Detailed(err)
 			resultPopup(err.Error(), proposalWindow)
 			return
 		}
@@ -88,13 +88,13 @@ func requestBox(proposer string, requests []*fio.MsigApprovalsInfo, index int, p
 			opts.ChainID, fio.CompressionNone,
 		)
 		if err != nil {
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <- errs.Detailed(err)
 			resultPopup(err.Error(), proposalWindow)
 			return
 		}
 		res, err := api.PushTransactionRaw(tx)
 		if err != nil {
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <- errs.Detailed(err)
 			resultPopup(err.Error(), proposalWindow)
 			return
 		}
@@ -123,7 +123,7 @@ func requestBox(proposer string, requests []*fio.MsigApprovalsInfo, index int, p
 		}
 		res, err := api.PushTransactionRaw(tx)
 		if err != nil {
-			errs.ErrChan <- err.Error()
+			errs.ErrChan <- errs.Detailed(err)
 			resultPopup(err.Error(), proposalWindow)
 			return
 		}
